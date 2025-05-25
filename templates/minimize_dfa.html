@@ -1,0 +1,13 @@
+{% extends "layout.html" %} {% block content %}
+<h2>Minimize DFA</h2>
+<form method="post">
+	<textarea name="states" placeholder="States"></textarea>
+	<textarea name="symbols" placeholder="Symbols"></textarea>
+	<input name="start" placeholder="Start State" />
+	<textarea name="final" placeholder="Final States"></textarea>
+	<textarea name="transitions" rows="4" placeholder="Transitions"></textarea>
+	<button type="submit">Minimize</button>
+</form>
+{% if result %}
+<div class="result" style="white-space: pre-wrap">{{ result }}</div>
+{% endif %} {% endblock %}

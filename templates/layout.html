@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Automata Web</title>
+		<link
+			rel="stylesheet"
+			href="{{ url_for('static', filename='style.css') }}"
+		/>
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
+			rel="stylesheet"
+		/>
+	</head>
+	<body>
+		<div class="sidebar">
+			<h2>Automata Web</h2>
+			<a href="{{ url_for('dfa_test') }}">Test DFA</a>
+			<a href="{{ url_for('regex_test') }}">Regex to NFA</a>
+			<a href="{{ url_for('minimize_dfa') }}">Minimize DFA</a>
+			<a href="{{ url_for('dfa_equivalence') }}">DFA Equivalence</a>
+		</div>
+		<div class="main">{% block content %}{% endblock %}</div>
+	</body>
+</html>

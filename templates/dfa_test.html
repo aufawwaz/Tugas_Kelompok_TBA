@@ -1,0 +1,40 @@
+{% extends "layout.html" %} {% block content %}
+<h2>Test DFA</h2>
+<form method="post" action="/dfa-test">
+	<textarea
+		name="states"
+		placeholder="States (misal: q0,q1,q2)"
+		required
+	></textarea
+	><br />
+	<textarea
+		name="symbols"
+		placeholder="Symbols (misal: 0,1)"
+		required
+	></textarea
+	><br />
+	<input name="start" placeholder="Start State (misal: q0)" required /><br />
+	<textarea
+		name="final"
+		placeholder="Final States (misal: q2)"
+		required
+	></textarea
+	><br />
+	<textarea
+		name="transitions"
+		rows="5"
+		placeholder="Transitions (contoh: q0,0 -> q1)"
+		required
+	></textarea
+	><br />
+	<input
+		name="string"
+		placeholder="Input String (misal: 0101)"
+		required
+	/><br />
+	<button type="submit">Test</button>
+</form>
+
+{% if result %}
+<div class="result">{{ result }}</div>
+{% endif %} {% endblock %}
