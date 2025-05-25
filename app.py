@@ -47,7 +47,7 @@ def parse_dfa_form(data):
 
 @app.route("/")
 def index():
-    return render_template("dfa_test.html")  # Halaman utama redirect ke DFA Test
+    return render_template("dfa_test.html")
 
 
 @app.route("/dfa-test", methods=["GET", "POST"])
