@@ -35,6 +35,10 @@ def parse_dfa_form(data):
             src, sym = left[0].strip(), left[1].strip()
             dst = parts[1].strip()
 
+            if src not in states:
+                return f"State asal '{src}' tidak ada di daftar states."
+            if dst not in states:
+                return f"State tujuan '{dst}' tidak ada di daftar states."
             if sym not in symbols:
                 return f"Simbol '{sym}' tidak ditemukan di daftar simbol."
 
