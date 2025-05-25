@@ -77,7 +77,8 @@ def regex_test():
         try:
             regex = Regex(request.form['regex'])
             string = request.form['string']
-            result = "DITERIMA" if regex.to_epsilon_nfa().accepts([Symbol(c) for c in string]) else "DITOLAK"
+            symbols = [Symbol(s) for s in string.strip().split()]
+            result = "DITERIMA" if regex.to_epsilon_nfa().accepts(symbols) else "DITOLAK"
         except Exception as e:
             result = f"Error: {str(e)}"
     return render_template("regex_test.html", result=result)
