@@ -328,7 +328,11 @@ def minimize():
         dfa = DFA(states, alphabet, transitions, start, accept)
         min_dfa = dfa.minimize()
         
-    return render_template('minimize.html', min_dfa=min_dfa)
+    if min_dfa:
+        minimized = dfa_to_str(min_dfa)
+    else:
+        minimized = None
+    return render_template('minimize.html', minimized=minimized)
 
 @app.route('/equivalence', methods=['GET', 'POST'])
 def equivalence():
@@ -362,6 +366,17 @@ def equivalence():
         
         result = 'Equivalen' if dfa1.is_equivalent(dfa2) else 'Tidak equivalen'
     return render_template('equivalence.html', result=result)
+
+def dfa_to_str(dfa):
+    s = []
+    s.append(f"States: {' '.join(sorted(dfa.states))}")
+    s.append(f"Alphabet: {' '.join(sorted(dfa.alphabet))}")
+    s.append(f"Start: {dfa.start}")
+    s.append(f"Accept: {' '.join(sorted(dfa.accept))}")
+    s.append("Transitions:")
+    for (src, sym), dst in dfa.transition.items():
+        s.append(f"  {src} - {sym} -> {dst}")
+    return '\n'.join(s)
 
 if __name__ == '__main__':
     app.run(debug=True)
