@@ -1,0 +1,55 @@
+{% extends "layout.html" %} {% block title %}DFA Equivalence{% endblock %} {%
+block content %}
+<h2>DFA Equivalence</h2>
+<form method="post">
+	<section>
+		<h2>DFA 1</h2>
+		<textarea
+			id="states1"
+			name="states1"
+			placeholder="States (q0 q1)"
+		></textarea>
+		<textarea
+			id="alphabet"
+			name="alphabet1"
+			placeholder="Alphabet (01)"
+		></textarea>
+		<textarea id="starts1" name="start1" placeholder="Start state"></textarea>
+		<textarea
+			id="accept1"
+			name="accept1"
+			placeholder="Accept states (q0 q1)"
+		></textarea>
+		<textarea
+			name="transitions1"
+			placeholder="Transitions (q0 0 q1)"
+		></textarea>
+	</section>
+	<section>
+		<h2>DFA 2</h2>
+		<textarea
+			id="states2"
+			name="states2"
+			placeholder="States (q0 q1)"
+		></textarea>
+		<textarea
+			id="alphabet2"
+			name="alphabet2"
+			placeholder="Alphabet (01)"
+		></textarea>
+		<textarea id="start2" name="start2" placeholder="Start state"></textarea>
+		<textarea
+			id="accept2"
+			name="accept2"
+			placeholder="Accept states (q0 q1)"
+		></textarea>
+		<textarea
+			name="transitions2"
+			placeholder="Transitions (q0 0 q1)"
+		></textarea>
+	</section>
+	<button type="submit">Check Equivalence</button>
+</form>
+{% if result %}
+<div class="result"><h3>Hasil: {{ result }}</h3></div>
+{% endif %} {% endblock %}

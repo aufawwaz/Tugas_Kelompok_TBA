@@ -1,0 +1,15 @@
+{% extends "layout.html" %} {% block title %}Test String DFA{% endblock %} {%
+block content %}
+<h2>Test String DFA</h2>
+<form method="post">
+	<textarea name="states" placeholder="States (q0 q1)"></textarea>
+	<textarea name="alphabet" placeholder="Alphabet (01)"></textarea>
+	<textarea name="start" placeholder="Start state"></textarea>
+	<textarea name="accept" placeholder="Accept states (q0 q1)"></textarea>
+	<textarea name="transitions" placeholder="Transitions (q0 0 q1)"></textarea>
+	<textarea name="teststring" placeholder="Test String"></textarea>
+	<button type="submit">Test</button>
+</form>
+{% if result is not none %}
+<div class="result"><h3>{{ result }}</h3></div>
+{% endif %} {% endblock %}

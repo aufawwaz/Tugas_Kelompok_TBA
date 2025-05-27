@@ -1,0 +1,17 @@
+{% extends "layout.html" %} {% block title %}Minimize DFA{% endblock %} {% block
+content %}
+<h2>Minimize DFA</h2>
+<form method="post">
+	<textarea name="states" placeholder="States (q0 q1)"></textarea>
+	<textarea name="alphabet" placeholder="Alphabet (01)"></textarea>
+	<textarea name="start" placeholder="Start state"></textarea>
+	<textarea name="accept" placeholder="Accept States (q0 q1)"></textarea>
+	<textarea name="transitions" placeholder="Transitions (q0 0 q1)"></textarea>
+	<button type="submit">Minimize</button>
+</form>
+{% if minimized %}
+<div class="result">
+	<h3>Hasil Minimisasi:</h3>
+	<pre>{{ minimized }}</pre>
+</div>
+{% endif %} {% endblock %}

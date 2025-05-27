@@ -1,130 +1,367 @@
-from flask import Flask, render_template, request
-from pyformlang.regular_expression import Regex
-from pyformlang.finite_automaton import State, Symbol, DeterministicFiniteAutomaton
+from flask import Flask, render_template, request, jsonify
+from collections import defaultdict, deque
+
+class DFA:
+    def __init__(self, states, alphabet, transition, start, accept):
+        self.states = states
+        self.alphabet = alphabet
+        self.transition = transition 
+        self.start = start
+        self.accept = accept
+
+    def test(self, string):
+        state = self.start
+        for symbol in string:
+            state = self.transition.get((state, symbol))
+            if state is None:
+                return False
+        return state in self.accept
+
+    def minimize(self):
+        P = [set(self.accept), set(self.states) - set(self.accept)]
+        W = [set(self.accept)]
+        while W:
+            A = W.pop()
+            for c in self.alphabet:
+                X = set(s for s in self.states if self.transition.get((s, c)) in A)
+                for Y in P[:]:
+                    inter = X & Y
+                    diff = Y - X
+                    if inter and diff:
+                        P.remove(Y)
+                        P.append(inter)
+                        P.append(diff)
+                        if Y in W:
+                            W.remove(Y)
+                            W.append(inter)
+                            W.append(diff)
+                        else:
+                            W.append(inter if len(inter) <= len(diff) else diff)
+
+        group_list = [frozenset(group) for group in P]
+        state_map = {}
+        for group in group_list:
+            for s in group:
+                state_map[s] = group
+
+        new_states = set(group_list)
+        new_start = state_map[self.start]
+        new_accept = {state_map[s] for s in self.accept}
+        new_transition = {}
+        for (s, c), t in self.transition.items():
+            new_s = state_map[s]
+            new_t = state_map[t]
+            new_transition[(new_s, c)] = new_t
+
+        def state_name(s):
+            return "{" + ",".join(sorted(s)) + "}"
+
+        str_state_map = {group: state_name(group) for group in new_states}
+
+        str_states = set(str_state_map.values())
+        str_start = str_state_map[new_start]
+        str_accept = {str_state_map[s] for s in new_accept}
+        str_transition = {}
+        for (s, c), t in new_transition.items():
+            str_transition[(str_state_map[s], c)] = str_state_map[t]
+
+        return DFA(str_states, self.alphabet, str_transition, str_start, str_accept)
+
+
+    def is_equivalent(self, other):
+        def next_state(pair, symbol):
+            s1, s2 = pair
+            t1 = self.transition.get((s1, symbol))
+            t2 = other.transition.get((s2, symbol))
+            return (t1, t2)
+        visited = set()
+        queue = deque()
+        queue.append((self.start, other.start))
+        while queue:
+            s1, s2 = queue.popleft()
+            if (s1 in self.accept) != (s2 in other.accept):
+                return False
+            for c in self.alphabet | other.alphabet:
+                pair = next_state((s1, s2), c)
+                if pair not in visited and None not in pair:
+                    visited.add(pair)
+                    queue.append(pair)
+        return True
+
+def complete_dfa(states, alphabet, transitions, start, accept):
+    states = set(states)
+    transitions = dict(transitions)
+    dead_state = 'DEAD'
+    added_dead = False
+    for s in states:
+        for c in alphabet:
+            if (s, c) not in transitions:
+                transitions[(s, c)] = dead_state
+                added_dead = True
+    if added_dead:
+        states.add(dead_state)
+        for c in alphabet:
+            transitions[(dead_state, c)] = dead_state
+    return states, alphabet, transitions, start, accept
+
+class NFA:
+    def __init__(self, states, alphabet, transition, start, accept):
+        self.states = states
+        self.alphabet = alphabet
+        self.transition = transition
+        self.start = start
+        self.accept = accept
+    
+    def epsilon_closure(self, states):
+        stack = list(states)
+        closure = set(states)
+        while stack:
+            state = stack.pop()
+            for next_state in self.transition.get((state, ''), set()):
+                if next_state not in closure:
+                    closure.add(next_state)
+                    stack.append(next_state)
+        return closure
+    
+    def test(self, string):
+        current = self.epsilon_closure({self.start})
+        for symbol in string:
+            next_states = set()
+            for state in current:
+                next_states |= self.transition.get((state, symbol), set())
+            current = self.epsilon_closure(next_states)
+        return bool(current & set(self.accept))
+
+def regex_to_nfa(regex):
+    def new_state():
+        new_state.counter += 1
+        return f"S{new_state.counter}"
+    new_state.counter = -1
+
+    def to_postfix(regex):
+        precedence = {'+': 3, '*': 4, '.': 2, '|': 1}
+        output = []
+        stack = []
+        prev = None
+        for c in regex:
+            if c in {'(', '|', '*', '+'}:
+                if c == '(':
+                    stack.append(c)
+                elif c in {'|'}:
+                    while stack and stack[-1] != '(' and precedence[stack[-1]] >= precedence[c]:
+                        output.append(stack.pop())
+                    stack.append(c)
+                elif c in {'*', '+'}:
+                    output.append(c)
+            elif c == ')':
+                while stack and stack[-1] != '(':
+                    output.append(stack.pop())
+                stack.pop()
+            else:
+                if prev and (prev not in {'(', '|'} and prev != '.'):
+                    while stack and stack[-1] != '(' and precedence[stack[-1]] >= precedence['.']:
+                        output.append(stack.pop())
+                    stack.append('.')
+                output.append(c)
+            prev = c
+        while stack:
+            output.append(stack.pop())
+        return output
+
+    def postfix_to_nfa(postfix):
+        stack = []
+        for token in postfix:
+            if token == '*':
+                nfa = stack.pop()
+                start = new_state()
+                end = new_state()
+                transitions = nfa['transitions'].copy()
+                transitions[(start, '')] = {nfa['start'], end}
+                for a in nfa['accept']:
+                    transitions.setdefault((a, ''), set()).update({nfa['start'], end})
+                stack.append({
+                    'start': start,
+                    'accept': {end},
+                    'states': nfa['states'] | {start, end},
+                    'alphabet': nfa['alphabet'],
+                    'transitions': transitions
+                })
+            elif token == '+':
+                nfa = stack.pop()
+                start_star = new_state()
+                end_star = new_state()
+                transitions_star = nfa['transitions'].copy()
+                transitions_star[(start_star, '')] = {nfa['start'], end_star}
+                for a in nfa['accept']:
+                    transitions_star.setdefault((a, ''), set()).update({nfa['start'], end_star})
+                nfa_star = {
+                    'start': start_star,
+                    'accept': {end_star},
+                    'states': nfa['states'] | {start_star, end_star},
+                    'alphabet': nfa['alphabet'],
+                    'transitions': transitions_star
+                }
+                transitions_concat = {**nfa['transitions']}
+                for k, v in nfa_star['transitions'].items():
+                    transitions_concat.setdefault(k, set()).update(v)
+                for a in nfa['accept']:
+                    transitions_concat.setdefault((a, ''), set()).add(nfa_star['start'])
+                stack.append({
+                    'start': nfa['start'],
+                    'accept': nfa_star['accept'],
+                    'states': nfa['states'] | nfa_star['states'],
+                    'alphabet': nfa['alphabet'] | nfa_star['alphabet'],
+                    'transitions': transitions_concat
+                })
+            elif token == '.':
+                nfa2 = stack.pop()
+                nfa1 = stack.pop()
+                transitions = {**nfa1['transitions']}
+                for k, v in nfa2['transitions'].items():
+                    transitions.setdefault(k, set()).update(v)
+                for a in nfa1['accept']:
+                    transitions.setdefault((a, ''), set()).add(nfa2['start'])
+                stack.append({
+                    'start': nfa1['start'],
+                    'accept': nfa2['accept'],
+                    'states': nfa1['states'] | nfa2['states'],
+                    'alphabet': nfa1['alphabet'] | nfa2['alphabet'],
+                    'transitions': transitions
+                })
+            elif token == '|':
+                nfa2 = stack.pop()
+                nfa1 = stack.pop()
+                start = new_state()
+                end = new_state()
+                transitions = {**nfa1['transitions']}
+                for k, v in nfa2['transitions'].items():
+                    transitions.setdefault(k, set()).update(v)
+                transitions[(start, '')] = {nfa1['start'], nfa2['start']}
+                for a in nfa1['accept']:
+                    transitions.setdefault((a, ''), set()).add(end)
+                for a in nfa2['accept']:
+                    transitions.setdefault((a, ''), set()).add(end)
+                stack.append({
+                    'start': start,
+                    'accept': {end},
+                    'states': nfa1['states'] | nfa2['states'] | {start, end},
+                    'alphabet': nfa1['alphabet'] | nfa2['alphabet'],
+                    'transitions': transitions
+                })
+            else:
+                start = new_state()
+                end = new_state()
+                stack.append({
+                    'start': start,
+                    'accept': {end},
+                    'states': {start, end},
+                    'alphabet': {token},
+                    'transitions': {(start, token): {end}}
+                })
+        nfa = stack.pop()
+        return nfa
+
+    postfix = to_postfix(regex)
+    nfa_dict = postfix_to_nfa(postfix)
+    return NFA(
+        nfa_dict['states'],
+        set(a for a in nfa_dict['alphabet'] if a != ''),
+        nfa_dict['transitions'],
+        nfa_dict['start'],
+        nfa_dict['accept']
+    )
 
 app = Flask(__name__)
 
-# Utilitas untuk parsing form input menjadi DFA
-def parse_dfa_form(data):
-    try:
-        states = set(s.strip() for s in data['states'].split(",") if s.strip())
-        symbols = set(s.strip() for s in data['symbols'].split(",") if s.strip())
-        start = data['start'].strip()
-        final = set(s.strip() for s in data['final'].split(",") if s.strip())
-        transitions = data['transitions'].strip().splitlines()
+@app.route('/')
+def home():
+    return render_template('layout.html')
 
-        if not states or not symbols:
-            return "Kesalahan: States dan symbols tidak boleh kosong."
-        if start not in states:
-            return f"Kesalahan: Start state '{start}' tidak ada di daftar states."
-        if not final.issubset(states):
-            return f"Kesalahan: Final states harus bagian dari states."
+@app.route('/testdfa', methods=['GET', 'POST'])
+def testdfa():
+    result = None
+    if request.method == 'POST':
+        states = set(request.form['states'].split())
+        alphabet = set(request.form['alphabet'])
+        start = request.form['start']
+        accept = set(request.form.getlist('accept'))
+        transitions = {}
+        
+        for line in request.form['transitions'].split('\n'):
+            if line.strip():
+                s, c, t = line.strip().split()
+                transitions[(s, c)] = t
+                
+        dfa = DFA(states, alphabet, transitions, start, accept)
+        test_str = request.form['teststring']
+        result = 'Diterima' if dfa.test(test_str) else 'Tidak diterima'
+    return render_template('testdfa.html', result=result)
 
-        dfa = DeterministicFiniteAutomaton()
-        dfa.add_start_state(State(start))
-        for f in final:
-            dfa.add_final_state(State(f))
+@app.route('/regex', methods=['GET', 'POST'])
+def regex():
+    result = None
+    nfa_obj = None
+    regex = ''
+    
+    if request.method == 'POST':
+        regex = request.form['regex']
+        nfa_obj = regex_to_nfa(regex)
+        test_str = request.form['teststring']
+        result = 'Diterima' if nfa_obj.test(test_str) else 'Tidak diterima'
+        
+    return render_template('regex.html', result=result, nfa_obj=nfa_obj, regex=regex)
 
-        for line in transitions:
-            parts = line.split("->")
-            if len(parts) != 2:
-                return f"Kesalahan format transisi (harus 'state,symbol -> next_state'): {line}"
-            left = parts[0].strip().split(",")
-            if len(left) != 2:
-                return f"Kesalahan format bagian kiri transisi: {line}"
-            src, sym = left[0].strip(), left[1].strip()
-            dst = parts[1].strip()
+@app.route('/minimize', methods=['GET', 'POST'])
+def minimize():
+    min_dfa = None
+    if request.method == 'POST':
+        states = set(request.form['states'].split())
+        alphabet = set(request.form['alphabet'])
+        start = request.form['start']
+        accept = set(request.form['accept'].split())
+        transitions = {}
+        
+        for line in request.form['transitions'].split('\n'):
+            if line.strip():
+                s, c, t = line.strip().split()
+                transitions[(s, c)] = t
+        dfa = DFA(states, alphabet, transitions, start, accept)
+        min_dfa = dfa.minimize()
+        
+    return render_template('minimize.html', min_dfa=min_dfa)
 
-            if src not in states:
-                return f"State asal '{src}' tidak ada di daftar states."
-            if dst not in states:
-                return f"State tujuan '{dst}' tidak ada di daftar states."
-            if sym not in symbols:
-                return f"Simbol '{sym}' tidak ditemukan di daftar simbol."
+@app.route('/equivalence', methods=['GET', 'POST'])
+def equivalence():
+    result = None
+    if request.method == 'POST':
+        # DFA 1
+        states1 = set(request.form['states1'].split())
+        alphabet1 = set(request.form['alphabet1'])
+        start1 = request.form['start1']
+        accept1 = set(request.form['accept1'].split())
+        transitions1 = {}
+        
+        for line in request.form['transitions1'].split('\n'):
+            if line.strip():
+                s, c, t = line.strip().split()
+                transitions1[(s, c)] = t
+        dfa1 = DFA(states1, alphabet1, transitions1, start1, accept1)
+        
+        # DFA 2
+        states2 = set(request.form['states2'].split())
+        alphabet2 = set(request.form['alphabet2'])
+        start2 = request.form['start2']
+        accept2 = set(request.form['accept2'].split())
+        transitions2 = {}
+        
+        for line in request.form['transitions2'].split('\n'):
+            if line.strip():
+                s, c, t = line.strip().split()
+                transitions2[(s, c)] = t
+        dfa2 = DFA(states2, alphabet2, transitions2, start2, accept2)
+        
+        result = 'Equivalen' if dfa1.is_equivalent(dfa2) else 'Tidak equivalen'
+    return render_template('equivalence.html', result=result)
 
-            dfa.add_transition(State(src), Symbol(sym), State(dst))
-
-        return dfa
-    except Exception as e:
-        return f"Kesalahan: {str(e)}"
-
-
-@app.route("/")
-def index():
-    return render_template("dfa_test.html")
-
-
-@app.route("/dfa-test", methods=["GET", "POST"])
-def dfa_test():
-    result = ""
-    if request.method == "POST":
-        dfa = parse_dfa_form(request.form)
-        if isinstance(dfa, str):
-            result = f"Error: {dfa}"
-        else:
-            string = request.form['string']
-            try:
-                result = "DITERIMA" if dfa.accepts([Symbol(c) for c in string]) else "DITOLAK"
-            except Exception as e:
-                result = f"Error saat mengecek DFA: {str(e)}"
-    return render_template("dfa_test.html", result=result)
-
-
-@app.route("/regex-test", methods=["GET", "POST"])
-def regex_test():
-    result = ""
-    if request.method == "POST":
-        try:
-            regex = Regex(request.form['regex'])
-            string = request.form['string']
-            symbols = [Symbol(c) for c in string]
-            result = "DITERIMA" if regex.to_epsilon_nfa().accepts(symbols) else "DITOLAK"
-        except Exception as e:
-            result = f"Error: {str(e)}"
-    return render_template("regex_test.html", result=result)
-
-
-@app.route("/minimize-dfa", methods=["GET", "POST"])
-def minimize_dfa():
-    result = ""
-    if request.method == "POST":
-        dfa = parse_dfa_form(request.form)
-        if isinstance(dfa, str):
-            result = f"Error: {dfa}"
-        else:
-            try:
-                min_dfa = dfa.minimize()
-                output = [
-                    "States: " + ", ".join(sorted(str(s) for s in min_dfa.states)),
-                    "Symbols: " + ", ".join(sorted(str(sym) for sym in min_dfa.symbols)),
-                    "Start: " + str(min_dfa.start_state),
-                    "Final: " + ", ".join(sorted(str(s) for s in min_dfa.final_states)),
-                    "Transitions:"
-                ]
-                for from_state, trans in min_dfa._transition_function._transitions.items():
-                    for symbol, to_state in trans.items():
-                        output.append(f"{from_state}, {symbol} -> {to_state}")
-                result = "\n".join(output)
-            except Exception as e:
-                result = f"Error saat minimisasi: {str(e)}"
-    return render_template("minimize_dfa.html", result=result)
-
-
-@app.route("/dfa-equivalence", methods=["GET", "POST"])
-def dfa_equivalence():
-    result = ""
-    if request.method == "POST":
-        dfa1 = parse_dfa_form({k[5:]: v for k, v in request.form.items() if k.startswith("dfa1_")})
-        dfa2 = parse_dfa_form({k[5:]: v for k, v in request.form.items() if k.startswith("dfa2_")})
-        if isinstance(dfa1, str) or isinstance(dfa2, str):
-            result = f"Error: {dfa1 if isinstance(dfa1, str) else dfa2}"
-        else:
-            try:
-                result = "EKUIVALEN" if dfa1.minimize() == dfa2.minimize() else "TIDAK EKUIVALEN"
-            except Exception as e:
-                result = f"Error saat pengecekan ekuivalensi: {str(e)}"
-    return render_template("dfa_equivalence.html", result=result)
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(debug=True)

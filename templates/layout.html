@@ -2,8 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Automata Web</title>
+		<title>{% block title %}Teori Bahasa dan Automata{% endblock %}</title>
 		<link
 			rel="stylesheet"
 			href="{{ url_for('static', filename='style.css') }}"
@@ -16,13 +15,14 @@
 	<body>
 		<div class="container">
 			<aside class="sidebar">
-				<h1>Automata Web</h1>
+				<h2>Teori Bahasa dan Automata</h2>
 				<nav>
-					<a href="{{ url_for('dfa_test') }}">Test DFA</a>
-					<a href="{{ url_for('regex_test') }}">Regex to NFA</a>
-					<a href="{{ url_for('minimize_dfa') }}">Minimize DFA</a>
-					<a href="{{ url_for('dfa_equivalence') }}">DFA Equivalence</a>
+					<a href="/testdfa">Test String DFA</a>
+					<a href="/regex">Generate NFA & Test</a>
+					<a href="/minimize">Minimize DFA</a>
+					<a href="/equivalence">DFA Equivalence</a>
 				</nav>
+				<h3>Kelompok 4</h3>
 			</aside>
 			<main class="main">
 				<section class="content">{% block content %}{% endblock %}</section>

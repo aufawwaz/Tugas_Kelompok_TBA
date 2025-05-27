@@ -1,0 +1,11 @@
+{% extends "layout.html" %} {% block title %}Generate NFA & Test{% endblock %}
+{% block content %}
+<h2>Generate NFA & Test</h2>
+<form method="post">
+	<textarea name="regex" placeholder="Masukkan Regex"></textarea>
+	<textarea name="teststring" placeholder="String yang diuji"></textarea>
+	<button type="submit">Test</button>
+</form>
+{% if result is not none %}
+<div class="result"><h3>{{ result }}</h3></div>
+{% endif %} {% endblock %}
