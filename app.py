@@ -139,26 +139,26 @@ def regex_to_nfa(regex):
     new_state.counter = -1
 
     def to_postfix(regex):
-        precedence = {'+': 3, '*': 4, '.': 2, '|': 1}
+        precedence = {'+' : 1,'*': 3, '.': 2, '|': 1}
         output = []
         stack = []
         prev = None
         for c in regex:
             if c in {'(', '|', '*', '+'}:
-                if c == '(':
+                if c == '(': 
                     stack.append(c)
-                elif c in {'|'}:
+                elif c == '|' or c == '+':
                     while stack and stack[-1] != '(' and precedence[stack[-1]] >= precedence[c]:
                         output.append(stack.pop())
                     stack.append(c)
-                elif c in {'*', '+'}:
+                elif c == '*':
                     output.append(c)
             elif c == ')':
-                while stack and stack[-1] != '(':
+                while stack and stack[-1] != '(': 
                     output.append(stack.pop())
                 stack.pop()
             else:
-                if prev and (prev not in {'(', '|'} and prev != '.'):
+                if prev and (prev not in {'(', '|', '+'} and prev != '.'):
                     while stack and stack[-1] != '(' and precedence[stack[-1]] >= precedence['.']:
                         output.append(stack.pop())
                     stack.append('.')
