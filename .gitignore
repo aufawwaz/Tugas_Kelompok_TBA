@@ -1,0 +1,3 @@
+# Folder pycache dan file hasil kompilasi
+__pycache__/
+*.pyc
