@@ -1,6 +1,9 @@
 {% extends "layout.html" %} {% block title %}Minimize DFA{% endblock %} {% block
 content %}
 <h2>Minimize DFA</h2>
+{% if error %}
+    <p style="color: red;">{{ error }}</p>
+{% endif %}
 <form method="post">
 	<textarea name="states" placeholder="States (q0 q1)"></textarea>
 	<textarea name="alphabet" placeholder="Alphabet (01)"></textarea>
@@ -15,3 +18,4 @@ content %}
 	<pre>{{ minimized }}</pre>
 </div>
 {% endif %} {% endblock %}
+

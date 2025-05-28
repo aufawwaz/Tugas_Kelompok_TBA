@@ -1,6 +1,9 @@
 {% extends "layout.html" %} {% block title %}DFA Equivalence{% endblock %} {%
 block content %}
 <h2>DFA Equivalence</h2>
+{% if error %}
+    <p style="color: red;">{{ error }}</p>
+{% endif %}
 <form method="post">
 	<section>
 		<h2>DFA 1</h2>
@@ -53,3 +56,4 @@ block content %}
 {% if result %}
 <div class="result"><h3>Hasil: {{ result }}</h3></div>
 {% endif %} {% endblock %}
+

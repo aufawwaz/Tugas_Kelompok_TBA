@@ -280,92 +280,120 @@ def home():
 @app.route('/testdfa', methods=['GET', 'POST'])
 def testdfa():
     result = None
+    error = None
     if request.method == 'POST':
-        states = set(request.form['states'].split())
-        alphabet = set(request.form['alphabet'])
-        start = request.form['start']
-        accept = set(request.form.getlist('accept'))
-        transitions = {}
-        
-        for line in request.form['transitions'].split('\n'):
-            if line.strip():
-                s, c, t = line.strip().split()
-                transitions[(s, c)] = t
-                
-        dfa = DFA(states, alphabet, transitions, start, accept)
-        test_str = request.form['teststring']
-        result = 'Diterima' if dfa.test(test_str) else 'Tidak diterima'
-    return render_template('testdfa.html', result=result)
+        states = request.form['states'].strip()
+        alphabet = request.form['alphabet'].strip()
+        start = request.form['start'].strip()
+        accept = request.form.getlist('accept')
+        transitions_raw = request.form['transitions'].strip()
+        test_str = request.form['teststring'].strip()
+
+        if not (states and alphabet and start and accept and transitions_raw):
+            error = "Harap masukkan semua input yang dibutuhkan."
+        else:
+            states = set(states.split())
+            alphabet = set(alphabet)
+            accept = set(accept)
+            transitions = {}
+            for line in transitions_raw.split('\n'):
+                if line.strip():
+                    s, c, t = line.strip().split()
+                    transitions[(s, c)] = t
+            dfa = DFA(states, alphabet, transitions, start, accept)
+            result = 'Diterima' if dfa.test(test_str) else 'Tidak diterima'
+    
+    return render_template('testdfa.html', result=result, error=error)
+
 
 @app.route('/regex', methods=['GET', 'POST'])
 def regex():
     result = None
     nfa_obj = None
-    regex = ''
-    
+    regex_input = ''
+    error = None
+
     if request.method == 'POST':
-        regex = request.form['regex']
-        nfa_obj = regex_to_nfa(regex)
-        test_str = request.form['teststring']
-        result = 'Diterima' if nfa_obj.test(test_str) else 'Tidak diterima'
+        regex_input = request.form['regex'].strip()
+        test_str = request.form['teststring'].strip()
+
+        if not regex_input:
+            error = "Harap masukkan regex."
+        else:
+            nfa_obj = regex_to_nfa(regex_input)
+            result = 'Diterima' if nfa_obj.test(test_str) else 'Tidak diterima'
         
-    return render_template('regex.html', result=result, nfa_obj=nfa_obj, regex=regex)
+    return render_template('regex.html', result=result, nfa_obj=nfa_obj, regex=regex_input, error=error)
+
 
 @app.route('/minimize', methods=['GET', 'POST'])
 def minimize():
     min_dfa = None
+    error = None
+    minimized = None
+
     if request.method == 'POST':
-        states = set(request.form['states'].split())
-        alphabet = set(request.form['alphabet'])
-        start = request.form['start']
-        accept = set(request.form['accept'].split())
-        transitions = {}
-        
-        for line in request.form['transitions'].split('\n'):
-            if line.strip():
-                s, c, t = line.strip().split()
-                transitions[(s, c)] = t
-        dfa = DFA(states, alphabet, transitions, start, accept)
-        min_dfa = dfa.minimize()
-        
-    if min_dfa:
-        minimized = dfa_to_str(min_dfa)
-    else:
-        minimized = None
-    return render_template('minimize.html', minimized=minimized)
+        states = request.form['states'].strip()
+        alphabet = request.form['alphabet'].strip()
+        start = request.form['start'].strip()
+        accept = request.form['accept'].strip()
+        transitions_raw = request.form['transitions'].strip()
+
+        if not (states and alphabet and start and accept and transitions_raw):
+            error = "Harap masukkan semua input yang dibutuhkan."
+        else:
+            states = set(states.split())
+            alphabet = set(alphabet)
+            accept = set(accept.split())
+            transitions = {}
+            for line in transitions_raw.split('\n'):
+                if line.strip():
+                    s, c, t = line.strip().split()
+                    transitions[(s, c)] = t
+            dfa = DFA(states, alphabet, transitions, start, accept)
+            min_dfa = dfa.minimize()
+            minimized = dfa_to_str(min_dfa)
+
+    return render_template('minimize.html', minimized=minimized, error=error)
+
 
 @app.route('/equivalence', methods=['GET', 'POST'])
 def equivalence():
     result = None
+    error = None
+
     if request.method == 'POST':
-        # DFA 1
-        states1 = set(request.form['states1'].split())
-        alphabet1 = set(request.form['alphabet1'])
-        start1 = request.form['start1']
-        accept1 = set(request.form['accept1'].split())
-        transitions1 = {}
-        
-        for line in request.form['transitions1'].split('\n'):
-            if line.strip():
-                s, c, t = line.strip().split()
-                transitions1[(s, c)] = t
-        dfa1 = DFA(states1, alphabet1, transitions1, start1, accept1)
-        
-        # DFA 2
-        states2 = set(request.form['states2'].split())
-        alphabet2 = set(request.form['alphabet2'])
-        start2 = request.form['start2']
-        accept2 = set(request.form['accept2'].split())
-        transitions2 = {}
-        
-        for line in request.form['transitions2'].split('\n'):
-            if line.strip():
-                s, c, t = line.strip().split()
-                transitions2[(s, c)] = t
-        dfa2 = DFA(states2, alphabet2, transitions2, start2, accept2)
-        
-        result = 'Equivalen' if dfa1.is_equivalent(dfa2) else 'Tidak equivalen'
-    return render_template('equivalence.html', result=result)
+        required_fields = ['states1', 'alphabet1', 'start1', 'accept1', 'transitions1',
+                           'states2', 'alphabet2', 'start2', 'accept2', 'transitions2']
+        if not all(request.form[field].strip() for field in required_fields):
+            error = "Harap masukkan semua input untuk kedua DFA."
+        else:
+            states1 = set(request.form['states1'].split())
+            alphabet1 = set(request.form['alphabet1'])
+            start1 = request.form['start1']
+            accept1 = set(request.form['accept1'].split())
+            transitions1 = {}
+            for line in request.form['transitions1'].split('\n'):
+                if line.strip():
+                    s, c, t = line.strip().split()
+                    transitions1[(s, c)] = t
+            dfa1 = DFA(states1, alphabet1, transitions1, start1, accept1)
+
+            states2 = set(request.form['states2'].split())
+            alphabet2 = set(request.form['alphabet2'])
+            start2 = request.form['start2']
+            accept2 = set(request.form['accept2'].split())
+            transitions2 = {}
+            for line in request.form['transitions2'].split('\n'):
+                if line.strip():
+                    s, c, t = line.strip().split()
+                    transitions2[(s, c)] = t
+            dfa2 = DFA(states2, alphabet2, transitions2, start2, accept2)
+
+            result = 'Equivalen' if dfa1.is_equivalent(dfa2) else 'Tidak equivalen'
+
+    return render_template('equivalence.html', result=result, error=error)
+
 
 def dfa_to_str(dfa):
     s = []

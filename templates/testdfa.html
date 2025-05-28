@@ -1,6 +1,9 @@
 {% extends "layout.html" %} {% block title %}Test String DFA{% endblock %} {%
 block content %}
 <h2>Test String DFA</h2>
+{% if error %}
+    <p style="color: red;">{{ error }}</p>
+{% endif %}
 <form method="post">
 	<textarea name="states" placeholder="States (q0 q1)"></textarea>
 	<textarea name="alphabet" placeholder="Alphabet (01)"></textarea>
@@ -13,3 +16,4 @@ block content %}
 {% if result is not none %}
 <div class="result"><h3>{{ result }}</h3></div>
 {% endif %} {% endblock %}
+
